@@ -1,0 +1,142 @@
+﻿@page "/attributes"
+@using System.Text.Json;
+@using System.Net.Mime;
+@using System.Text;
+
+<h3>Get Attributes from Image</h3>
+
+<label>Image Url: </label>
+<input @bind="ImageUrl" />
+<br />
+<br />
+<button @onclick="@ProcessImage">Process Image</button>
+<br />
+<br />
+@if (_faces != null)
+{
+
+    @foreach (var face in _faces)
+    {
+        <div class="row">
+            <div class="col-md-8">
+                <div style="float: left;">
+                    <img src="@ImageUrl" height="100" width="100" />
+                </div>
+                <div style="margin-left: 10px; float: right;">
+                    <ul>
+                        <li><strong>Image ID:</strong> @face.FaceId</li>
+                        <li><strong>Gender: </strong>@face.FaceAttributes.Gender</li>
+                        <li><strong>Age:</strong> @face.FaceAttributes.Age</li>
+                        <li><strong>Glasses?:</strong> @face.FaceAttributes.Glasses</li>
+                        <li><strong>Emotion:</strong> @face.TopEmotion</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+
+    private readonly string _baseUrl = "https://blazorfacerec.cognitiveservices.azure.com/";
+    private string ImageUrl { get; set; }
+    private Face[] _tmpfaces;
+    private List<Face> _faces;
+    private Dictionary<string, float> _emotions;
+
+    [Inject]
+    private AppConfiguration _config { get; set; }
+
+
+    private async Task ProcessImage()
+    {
+        _faces = null;
+        _faces = new List<Face>();
+
+        HttpClient client = new HttpClient { BaseAddress = new Uri(_baseUrl + "/face/v1.0/detect?returnFaceAttributes=age,glasses,emotion,gender&ReturnFaceLandmarks=true") };
+
+        HttpResponseMessage response = null;
+
+        var payload = new DataPayload { Url = ImageUrl };
+
+        var payloadString = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, MediaTypeNames.Application.Json);
+
+        client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _config.ApiKey);
+
+        response = await client.PostAsync(client.BaseAddress, payloadString);
+
+        if (response.Content is object && response.Content.Headers.ContentType.MediaType == "application/json")
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            _tmpfaces = JsonSerializer.Deserialize<Face[]>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            ProcessEmotions();
+        }
+    }
+
+    public void ProcessEmotions()
+    {
+        foreach (Face face in _tmpfaces)
+        {
+            var emotionValues = new Dictionary<string, float> {
+                {"Anger", face.FaceAttributes.Emotion.Anger},
+                {"Contempt", face.FaceAttributes.Emotion.Contempt},
+                {"Disgust", face.FaceAttributes.Emotion.Disgust},
+                {"Fear", face.FaceAttributes.Emotion.Fear},
+                {"Happiness", face.FaceAttributes.Emotion.Happiness},
+                {"Neutral", face.FaceAttributes.Emotion.Neutral},
+                {"Sadness", face.FaceAttributes.Emotion.Sadness},
+                {"Surprise", face.FaceAttributes.Emotion.Surprise}
+
+            };
+
+            float topValue = 0;
+            string topValueName = "";
+
+            foreach (var emotion in emotionValues)
+            {
+                Console.WriteLine("Key: " + emotion.Key + "Value: " + emotion.Value);
+
+                if (emotion.Value > topValue)
+                {
+                    topValue = emotion.Value;
+                    topValueName = emotion.Key;
+                }
+            }
+
+            Face ourFace = new Face { FaceId = face.FaceId, FaceAttributes = face.FaceAttributes, TopEmotion = topValueName };
+            _faces.Add(ourFace);
+        }
+    }
+
+    public class DataPayload
+    {
+        public string Url { get; set; }
+    }
+
+    public class Face
+    {
+        public Guid FaceId { get; set; }
+        public FaceAttribute FaceAttributes { get; set; }
+        public string TopEmotion { get; set; }
+    }
+
+    public class FaceAttribute
+    {
+        public string Gender { get; set; }
+        public float Age { get; set; }
+        public string Glasses { get; set; }
+        public Emotion Emotion { get; set; }
+    }
+
+    public class Emotion
+    {
+        public float Anger { get; set; }
+        public float Contempt { get; set; }
+        public float Disgust { get; set; }
+        public float Fear { get; set; }
+        public float Happiness { get; set; }
+        public float Neutral { get; set; }
+        public float Sadness { get; set; }
+        public float Surprise { get; set; }
+    }
+}
