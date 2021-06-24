@@ -7,4 +7,4 @@ This is a Blazor server application that uses the Azure Cognitive Services Face 
 
 This uses Blazor Server, .NET 5, and the Azure Face API. 
 
-This is for a project on [CodeProject](https://www.codeproject.com/) to be published soon.  
+This is the source for the project I created on Code Project: [Building a Face Recognition App with Blazor](https://www.codeproject.com/Articles/5305710/Building-a-Face-Recognition-App-with-Blazor)
