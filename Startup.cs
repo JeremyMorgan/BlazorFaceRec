@@ -27,7 +27,7 @@ namespace blazorfacerec
         {
             services.AddRazorPages();
             services.AddServerSideBlazor();
-            var config = new AppConfiguration {ApiKey = Configuration["FaceApiKey"]};
+            var config = new AppConfiguration {ApiKey = Configuration["FaceApiKey"], BaseUrl = "https://blazorfacerec.cognitiveservices.azure.com/" };
             services.AddSingleton<AppConfiguration>(config);
         }
 
